@@ -20,12 +20,15 @@
 //! #![feature(nll)]
 //! extern crate refmove;
 //! use refmove::{Anchor, AnchorExt, RefMove};
+//! # #[cfg(feature = "std")]
 //! # fn main() {
 //! // Borrowing from stack
 //! let _: RefMove<i32> = 42.anchor().borrow_move();
 //! // Borrowing from box
 //! let _: RefMove<i32> = Box::new(42).anchor_box().borrow_move();
 //! # }
+//! # #[cfg(not(feature = "std"))]
+//! # fn main() {}
 //! ```
 //!
 //! ### Extracting
