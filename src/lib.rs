@@ -1,3 +1,50 @@
+//! This crate contains an experimental implementation of library-level
+//! by-move references.
+//!
+//! When [#50173][#50173] and [#53033][#53033] land in the compiler,
+//! it will enable you to use `self: RefMove<Self>` to pass your trait
+//! object by value, even without allocation.
+//!
+//! [#50173]: https://github.com/rust-lang/rust/pull/50173
+//! [#53033]: https://github.com/rust-lang/rust/pull/53033
+//!
+//! See [#48055][#48055] for another approach to allow by-value trait objects.
+//!
+//! [#48055]: https://github.com/rust-lang/rust/issues/48055
+//!
+//! ## Usage
+//!
+//! ### Borrowing
+//!
+//! ```rust
+//! #![feature(nll)]
+//! extern crate refmove;
+//! use refmove::{Anchor, AnchorExt, RefMove};
+//! # fn main() {
+//! // Borrowing from stack
+//! let _: RefMove<i32> = 42.anchor().borrow_move();
+//! // Borrowing from box
+//! let _: RefMove<i32> = Box::new(42).anchor_box().borrow_move();
+//! # }
+//! ```
+//!
+//! ### Extracting
+//!
+//! ```rust
+//! #![feature(nll)]
+//! extern crate refmove;
+//! use refmove::{Anchor, AnchorExt, RefMove};
+//! # fn main() {
+//! #     f("42".to_string().anchor().borrow_move());
+//! # }
+//! fn f(x: RefMove<String>) {
+//!     // Borrowing by dereference
+//!     println!("{}", &x as &String);
+//!     // Move out ownership
+//!     let _: String = x.into_inner();
+//! }
+//! ```
+
 // We need it to achieve smooth borrowing.
 #![feature(nll)]
 // To implement Unpin
@@ -35,6 +82,17 @@ pub mod anchor;
 mod borrow;
 mod impls;
 
+/// Owned reference.
+///
+/// `RefMove<'a, T>` inherits both `&'a mut T` and `Box<T>`. For example,
+///
+/// - As in `RefMove<'a, T>`, `RefMove<'a, T>` is covariant w.r.t. `'a`.
+/// - As in `Box<T>`, `RefMove<'a, T>` is covariant w.r.t. `T`.
+/// - As in `Box<T>`, `RefMove<'a, T>` has a destructor.
+///   However, unlike `Box<T>`, it only destructs its contents and does not
+///   free the pointer itself.
+/// - Therefore, `RefMove<'a, T>` can refer to the stack like `&'a mut T`.
+/// - Like `Box<T>`, you can extract `T` from it.
 pub struct RefMove<'a, T: ?Sized + 'a> {
     ptr: NonNull<T>,
     _marker: PhantomData<(&'a (), T)>,
@@ -42,6 +100,27 @@ pub struct RefMove<'a, T: ?Sized + 'a> {
 
 // TODO: make T: ?Sized once rust-lang/rust#53033 lands
 impl<'a, T: 'a> RefMove<'a, T> {
+    /// Creates `RefMove` from its `ManuallyDrop` reference.
+    ///
+    /// It works much like [`ManuallyDrop::drop`][ManuallyDrop::drop]
+    /// but the actual drop of the content delays until `RefMove` is dropped.
+    ///
+    /// [ManuallyDrop::drop]: https://doc.rust-lang.org/nightly/core/mem/struct.ManuallyDrop.html#method.drop
+    ///
+    /// ## Safety
+    ///
+    /// This function eventually (by expiration of `'a` lifetime) runs
+    /// the destructor of the contained value and thus the wrapped value
+    /// represents uninitialized data after `'a`.
+    /// It is up to the user of this method to ensure the uninitialized data
+    /// is actually used.
+    ///
+    /// ## Sizedness
+    ///
+    /// This function currently imposes the `T: Sized` bound.
+    /// `T: ?Sized` is just blocked by [#53033][#53033] in the compiler.
+    ///
+    /// [#53033]: https://github.com/rust-lang/rust/pull/53033
     pub unsafe fn from_mut(reference: &'a mut ManuallyDrop<T>) -> Self {
         Self {
             ptr: reference.deref_mut().into(),
@@ -51,6 +130,15 @@ impl<'a, T: 'a> RefMove<'a, T> {
 }
 
 impl<'a, T: ?Sized + 'a> RefMove<'a, T> {
+    /// Creates `RefMove` from a pointer.
+    ///
+    /// ## Safety
+    ///
+    /// `ptr` must point to a memory region that is valid until
+    /// expiration of `'a` lifetime.
+    /// The memory region must not be shared by another.
+    /// The memory region must initially contain the valid content.
+    /// After expiration of `'a` lifetime, the region is uninitialized.
     pub unsafe fn from_ptr(ptr: *mut T) -> Self {
         Self {
             ptr: NonNull::new_unchecked(ptr),
@@ -60,6 +148,7 @@ impl<'a, T: ?Sized + 'a> RefMove<'a, T> {
 }
 
 impl<'a, T: 'a> RefMove<'a, T> {
+    /// Turns `RefMove` into its content.
     pub fn into_inner(self) -> T {
         let ret = unsafe { ptr::read(self.ptr.as_ptr() as *const T) };
         mem::forget(self);

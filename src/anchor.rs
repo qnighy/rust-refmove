@@ -1,13 +1,31 @@
+//! Anchors
+//!
+//! Anchors ensure validity of memory regions at caller side.
+
 use std::mem::ManuallyDrop;
 use std::fmt;
 
 use RefMove;
 
+/// Anchors
+///
+/// Anchors ensure validity of memory regions at caller side.
 pub trait Anchor<T, U: ?Sized> {
+    /// Wraps the ownership by this anchor.
     fn anchor_from(content: T) -> Self;
+    /// Turns a mutable reference to this anchor into a by-move reference
+    /// to its content.
+    ///
+    /// ## Panics
+    ///
+    /// This method panics when called more than once.
     fn borrow_move<'a>(&'a mut self) -> RefMove<'a, U>;
 }
 
+/// Anchor to obtain by-move reference to the stack.
+///
+/// The structure is similar to `Option<T>` but avoids some unwanted
+/// optimizations for this purpose.
 pub struct StackAnchor<T> {
     is_some: bool,
     content: ManuallyDrop<T>,
@@ -54,6 +72,17 @@ impl<T: fmt::Debug> fmt::Debug for StackAnchor<T> {
 }
 
 // TODO: make T: ?Sized once rust-lang/rust#53033 lands
+/// Anchor to obtain by-move reference to the heap.
+///
+/// The structure is similar to `Box<Option<T>>` but `is_some` flag is
+/// out of `Box` so that we can reuse `Box<T>` pointer.
+///
+/// ## Sizedness
+///
+/// This type currently imposes the `T: Sized` bound.
+/// `T: ?Sized` is just blocked by [#53033][#53033] in the compiler.
+///
+/// [#53033]: https://github.com/rust-lang/rust/pull/53033
 #[cfg(feature = "std")]
 pub struct BoxAnchor<T> {
     is_some: bool,
@@ -103,6 +132,7 @@ impl<T: fmt::Debug> fmt::Debug for BoxAnchor<T> {
     }
 }
 
+/// Trivial anchor that just returns the given `RefMove`.
 #[derive(Debug)]
 pub struct IdentityAnchor<'a, T: ?Sized + 'a> {
     content: Option<RefMove<'a, T>>,

@@ -6,7 +6,19 @@ use anchor::{Anchor, StackAnchor, IdentityAnchor};
 #[cfg(feature = "std")]
 use anchor::BoxAnchor;
 
+/// Anchored by-move borrowing.
+///
+/// This is different from [`BorrowMove`][BorrowMove] in that the user has to
+/// provide an **anchored** self when invoking [`borrow_move`][borrow_move].
+///
+/// This extra step is required to achieve safe by-move borrowing.
+/// The point is that it's caller's responsibility to ensure the space is
+/// valid until `'a` expires.
+///
+/// [BorrowMove]: trait.BorrowMove.html
+/// [borrow_move]: ../anchor/trait.Anchor.html#tymethod.borrow_move
 pub trait BorrowInterior<Borrowed: ?Sized>: BorrowMut<Borrowed> + Sized {
+    /// The anchor type we use for this pair of borrowing.
     type Anchor: Anchor<Self, Borrowed>;
 }
 
@@ -24,11 +36,18 @@ impl<T> BorrowInterior<T> for Box<T> {
     type Anchor = BoxAnchor<T>;
 }
 
+/// Provides `anchor` and `anchor_box` methods.
 pub trait AnchorExt: Sized {
+    /// Wraps the value by `StackAnchor`.
+    /// With `#![feature(nll)]` enabled you can write `.anchor().borrow_move()`
+    /// to create `RefMove` pointing to the stack.
     fn anchor(self) -> StackAnchor<Self> {
         StackAnchor::anchor_from(self)
     }
 
+    /// Wraps the value by `BoxAnchor` or `IdentityAnchor`.
+    /// With `#![feature(nll)]` enabled you can write `.anchor_box().borrow_move()`
+    /// to create `RefMove` pointing to the heap.
     fn anchor_box(self) -> Self::Anchor
     where
         Self: Deref,
@@ -40,6 +59,18 @@ pub trait AnchorExt: Sized {
 
 impl<T> AnchorExt for T {}
 
+/// Unanchored by-move reborrowing.
+///
+/// Unlike [`BorrowInterior`][BorrowInterior] the definition of `BorrowMove`
+/// is similar to the one in `BorrowMut` and very straightforward.
+///
+/// However, it cannot provide a *starting point* of the by-move borrowing,
+/// namely getting `RefMove<T>` from `T` or `Box<T>`.
+///
+/// Both stack-borrowing and heap-borrowing need some tweak to ensure validity.
+/// That's what [`BorrowInterior`][BorrowInterior] provides.
+///
+/// [BorrowInterior]: trait.BorrowInterior.html
 pub trait BorrowMove<Borrowed: ?Sized>: BorrowMut<Borrowed> {
     fn borrow_move<'a>(self: RefMove<'a, Self>) -> RefMove<'a, Borrowed>;
 }
