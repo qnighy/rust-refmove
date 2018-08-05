@@ -48,7 +48,9 @@ impl<'a, T: 'a> RefMove<'a, T> {
             _marker: PhantomData,
         }
     }
+}
 
+impl<'a, T: ?Sized + 'a> RefMove<'a, T> {
     pub unsafe fn from_ptr(ptr: *mut T) -> Self {
         Self {
             ptr: NonNull::new_unchecked(ptr),
