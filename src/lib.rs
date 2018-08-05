@@ -66,7 +66,6 @@
 #![feature(trusted_len)]
 // To implement Read::initializer
 #![feature(read_initializer)]
-
 #![cfg_attr(not(feature = "std"), no_std)]
 #[cfg(not(feature = "std"))]
 use core as std;
@@ -79,7 +78,7 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::ptr::{self, drop_in_place, NonNull};
 
 pub use anchor::Anchor;
-pub use borrow::{BorrowInterior, BorrowMove, AnchorExt};
+pub use borrow::{AnchorExt, BorrowInterior, BorrowMove};
 
 pub mod anchor;
 mod borrow;
@@ -228,7 +227,10 @@ mod tests {
             assert_eq!(x, e);
         }
         f("hoge".to_string().anchor().borrow_move(), "hoge");
-        f(Box::new("fuga".to_string()).anchor_box().borrow_move(), "fuga");
+        f(
+            Box::new("fuga".to_string()).anchor_box().borrow_move(),
+            "fuga",
+        );
     }
 
     #[test]
