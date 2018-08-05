@@ -1,10 +1,10 @@
 use std::borrow::BorrowMut;
 use std::ops::Deref;
 
-use RefMove;
-use anchor::{Anchor, StackAnchor, IdentityAnchor};
 #[cfg(feature = "std")]
 use anchor::BoxAnchor;
+use anchor::{Anchor, IdentityAnchor, StackAnchor};
+use RefMove;
 
 /// Anchored by-move borrowing.
 ///

@@ -2,8 +2,8 @@
 //!
 //! Anchors ensure validity of memory regions at caller side.
 
-use std::mem::ManuallyDrop;
 use std::fmt;
+use std::mem::ManuallyDrop;
 
 use RefMove;
 
@@ -146,6 +146,8 @@ impl<'a, T: ?Sized + 'a> Anchor<RefMove<'a, T>, T> for IdentityAnchor<'a, T> {
     }
 
     fn borrow_move<'b>(&'b mut self) -> RefMove<'b, T> {
-        self.content.take().expect("double borrow_move from IdentityAnchor")
+        self.content
+            .take()
+            .expect("double borrow_move from IdentityAnchor")
     }
 }

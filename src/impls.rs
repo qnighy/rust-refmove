@@ -1,10 +1,10 @@
 use std::borrow::{Borrow, BorrowMut};
-use std::fmt;
 use std::cmp;
+use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::iter::{FusedIterator, TrustedLen};
 #[cfg(feature = "std")]
-use std::io::{self, Write, Read, Seek, SeekFrom, BufRead};
+use std::io::{self, BufRead, Read, Seek, SeekFrom, Write};
+use std::iter::{FusedIterator, TrustedLen};
 
 use RefMove;
 
@@ -45,7 +45,7 @@ macro_rules! delegate_format {
                 <T as $Trait>::fmt(self, f)
             }
         }
-    }
+    };
 }
 delegate_format!(fmt::Debug);
 delegate_format!(fmt::Display);
@@ -92,7 +92,7 @@ macro_rules! delegate_partial_ord {
                 <$A as PartialOrd<$B>>::ge(self, other)
             }
         }
-    }
+    };
 }
 delegate_partial_ord!('a, 'b, A, B, RefMove<'a, A>, RefMove<'b, B>);
 delegate_partial_ord!('a, 'b, A, B, RefMove<'a, A>, &'b mut B);
@@ -101,7 +101,10 @@ delegate_partial_ord!('a, 'b, A, B, RefMove<'a, A>, &'b B);
 // delegate_partial_ord!('a, 'b, A, B, &'a A, RefMove<'b, B>);
 
 impl<'a, A> Eq for RefMove<'a, A> where A: Eq + ?Sized {}
-impl<'a, A> Ord for RefMove<'a, A> where A: Ord + ?Sized {
+impl<'a, A> Ord for RefMove<'a, A>
+where
+    A: Ord + ?Sized,
+{
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         <A as Ord>::cmp(self, other)
     }
@@ -128,7 +131,7 @@ where
 
 impl<'a, A, F> FnOnce<A> for RefMove<'a, F>
 where
-    F: FnMut<A> + ?Sized,  // TODO
+    F: FnMut<A> + ?Sized, // TODO
 {
     type Output = F::Output;
     extern "rust-call" fn call_once(mut self, args: A) -> F::Output {
