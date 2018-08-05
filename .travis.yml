@@ -13,4 +13,5 @@ install:
 script:
   - cargo test --no-default-features
   - cargo test
-  - cargo fmt -- --write-mode check
+  # - cargo fmt -- --write-mode check
+  - cargo fmt -- --check
