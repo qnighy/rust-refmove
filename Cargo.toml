@@ -3,6 +3,21 @@ name = "refmove"
 version = "0.1.0"
 authors = ["Masaki Hara <ackie.h.gmai@gmail.com>"]
 
+description = "An experimental implementation of library-level by-move references"
+# documentation = ""
+# homepage = ""
+repository = "https://github.com/qnighy/rust-refmove"
+readme = "README.md"
+keywords = ["reference", "ownership"]
+categories = ["memory-management", "no-std", "rust-patterns"]
+license = "MIT / Apache-2.0"
+
+[badges]
+travis-ci = { repository = "qnighy/rust-refmove", branch = "master" }
+is-it-maintained-issue-resolution = { repository = "qnighy/rust-refmove" }
+is-it-maintained-open-issues = { repository = "qnighy/rust-refmove" }
+maintenance = { status = "experimental" }
+
 [dependencies]
 
 [features]
