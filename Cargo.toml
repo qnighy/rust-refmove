@@ -1,0 +1,10 @@
+[package]
+name = "refmove"
+version = "0.1.0"
+authors = ["Masaki Hara <ackie.h.gmai@gmail.com>"]
+
+[dependencies]
+
+[features]
+default = ["std"]
+std = []
