@@ -1,3 +1,5 @@
+// We need it to achieve smooth borrowing.
+#![feature(nll)]
 // To implement Unpin
 #![feature(pin)]
 // To use #[may_dangle]
@@ -131,10 +133,8 @@ mod tests {
             println!("{}", x);
             assert_eq!(x, e);
         }
-        let mut tmp = "hoge".to_string().anchor();
-        f(tmp.borrow_move(), "hoge");
-        let mut tmp = Box::new("fuga".to_string()).anchor_box();
-        f(tmp.borrow_move(), "fuga");
+        f("hoge".to_string().anchor().borrow_move(), "hoge");
+        f(Box::new("fuga".to_string()).anchor_box().borrow_move(), "fuga");
     }
 
     #[test]
@@ -143,7 +143,6 @@ mod tests {
             assert_eq!(**x, 42);
         }
         let mut x = 42;
-        let mut tmp = (&mut x).anchor();
-        f(tmp.borrow_move());
+        f((&mut x).anchor().borrow_move());
     }
 }
