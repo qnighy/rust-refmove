@@ -65,7 +65,7 @@
 // To implement TrustedLen
 #![feature(trusted_len)]
 // To implement Read::initializer
-#![feature(read_initializer)]
+#![cfg_attr(feature = "std", feature(read_initializer))]
 #![cfg_attr(not(feature = "std"), no_std)]
 #[cfg(not(feature = "std"))]
 use core as std;
