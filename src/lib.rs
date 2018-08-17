@@ -1,12 +1,11 @@
 //! This crate contains an experimental implementation of library-level
 //! by-move references.
 //!
-//! When [#50173][#50173] and [#53033][#53033] land in the compiler,
+//! When [#50173][#50173] land in the compiler,
 //! it will enable you to use `self: RefMove<Self>` to pass your trait
 //! object by value, even without allocation.
 //!
 //! [#50173]: https://github.com/rust-lang/rust/pull/50173
-//! [#53033]: https://github.com/rust-lang/rust/pull/53033
 //!
 //! See [#48055][#48055] for another approach to allow by-value trait objects.
 //!
@@ -82,6 +81,7 @@ pub use borrow::{AnchorExt, BorrowInterior, BorrowMove};
 
 pub mod anchor;
 mod borrow;
+mod downcast;
 mod impls;
 
 /// Owned reference.
@@ -100,8 +100,7 @@ pub struct RefMove<'a, T: ?Sized + 'a> {
     _marker: PhantomData<(&'a (), T)>,
 }
 
-// TODO: make T: ?Sized once rust-lang/rust#53033 lands
-impl<'a, T: 'a> RefMove<'a, T> {
+impl<'a, T: ?Sized + 'a> RefMove<'a, T> {
     /// Creates `RefMove` from its `ManuallyDrop` reference.
     ///
     /// It works much like [`ManuallyDrop::drop`][ManuallyDrop::drop]
@@ -116,22 +115,13 @@ impl<'a, T: 'a> RefMove<'a, T> {
     /// represents uninitialized data after `'a`.
     /// It is up to the user of this method to ensure the uninitialized data
     /// is actually used.
-    ///
-    /// ## Sizedness
-    ///
-    /// This function currently imposes the `T: Sized` bound.
-    /// `T: ?Sized` is just blocked by [#53033][#53033] in the compiler.
-    ///
-    /// [#53033]: https://github.com/rust-lang/rust/pull/53033
     pub unsafe fn from_mut(reference: &'a mut ManuallyDrop<T>) -> Self {
         Self {
             ptr: reference.deref_mut().into(),
             _marker: PhantomData,
         }
     }
-}
 
-impl<'a, T: ?Sized + 'a> RefMove<'a, T> {
     /// Creates `RefMove` from a pointer.
     ///
     /// ## Safety
@@ -146,6 +136,13 @@ impl<'a, T: ?Sized + 'a> RefMove<'a, T> {
             ptr: NonNull::new_unchecked(ptr),
             _marker: PhantomData,
         }
+    }
+
+    /// Turns it into a raw pointer, without dropping its content.
+    pub fn into_ptr(this: Self) -> *mut T {
+        let ptr = this.ptr;
+        mem::forget(this);
+        ptr.as_ptr()
     }
 }
 
