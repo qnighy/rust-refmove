@@ -81,6 +81,7 @@ pub use borrow::{AnchorExt, BorrowInterior, BorrowMove};
 
 pub mod anchor;
 mod borrow;
+mod downcast;
 mod impls;
 
 /// Owned reference.
@@ -135,6 +136,13 @@ impl<'a, T: ?Sized + 'a> RefMove<'a, T> {
             ptr: NonNull::new_unchecked(ptr),
             _marker: PhantomData,
         }
+    }
+
+    /// Turns it into a raw pointer, without dropping its content.
+    pub fn into_ptr(this: Self) -> *mut T {
+        let ptr = this.ptr;
+        mem::forget(this);
+        ptr.as_ptr()
     }
 }
 
