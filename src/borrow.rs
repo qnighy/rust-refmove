@@ -30,9 +30,8 @@ impl<'a, T: ?Sized> BorrowInterior<T> for RefMove<'a, T> {
     type Anchor = IdentityAnchor<'a, T>;
 }
 
-// TODO: make T: ?Sized once rust-lang/rust#53033 lands
 #[cfg(feature = "std")]
-impl<T> BorrowInterior<T> for Box<T> {
+impl<T: ?Sized> BorrowInterior<T> for Box<T> {
     type Anchor = BoxAnchor<T>;
 }
 

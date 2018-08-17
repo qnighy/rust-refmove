@@ -71,26 +71,18 @@ impl<T: fmt::Debug> fmt::Debug for StackAnchor<T> {
     }
 }
 
-// TODO: make T: ?Sized once rust-lang/rust#53033 lands
 /// Anchor to obtain by-move reference to the heap.
 ///
 /// The structure is similar to `Box<Option<T>>` but `is_some` flag is
 /// out of `Box` so that we can reuse `Box<T>` pointer.
-///
-/// ## Sizedness
-///
-/// This type currently imposes the `T: Sized` bound.
-/// `T: ?Sized` is just blocked by [#53033][#53033] in the compiler.
-///
-/// [#53033]: https://github.com/rust-lang/rust/pull/53033
 #[cfg(feature = "std")]
-pub struct BoxAnchor<T> {
+pub struct BoxAnchor<T: ?Sized> {
     is_some: bool,
     content: Box<ManuallyDrop<T>>,
 }
 
 #[cfg(feature = "std")]
-impl<T> Anchor<Box<T>, T> for BoxAnchor<T> {
+impl<T: ?Sized> Anchor<Box<T>, T> for BoxAnchor<T> {
     fn anchor_from(content: Box<T>) -> Self {
         Self {
             is_some: true,
@@ -106,7 +98,7 @@ impl<T> Anchor<Box<T>, T> for BoxAnchor<T> {
 }
 
 #[cfg(feature = "std")]
-unsafe impl<#[may_dangle] T> Drop for BoxAnchor<T> {
+unsafe impl<#[may_dangle] T: ?Sized> Drop for BoxAnchor<T> {
     fn drop(&mut self) {
         unsafe {
             if self.is_some {
@@ -117,12 +109,12 @@ unsafe impl<#[may_dangle] T> Drop for BoxAnchor<T> {
 }
 
 #[cfg(feature = "std")]
-impl<T: fmt::Debug> fmt::Debug for BoxAnchor<T> {
+impl<T: fmt::Debug + ?Sized> fmt::Debug for BoxAnchor<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.is_some {
             f.debug_struct("BoxAnchor")
                 .field("is_some", &self.is_some)
-                .field("content", &self.content as &T)
+                .field("content", &(&self.content as &T))
                 .finish()
         } else {
             f.debug_struct("BoxAnchor")
