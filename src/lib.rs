@@ -189,7 +189,8 @@ where
     'b: 'a,
     T: Unsize<U> + ?Sized,
     U: ?Sized,
-{}
+{
+}
 
 #[cfg(test)]
 mod tests {
