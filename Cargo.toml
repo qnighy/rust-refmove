@@ -1,6 +1,6 @@
 [package]
 name = "refmove"
-version = "0.1.3"
+version = "0.1.4-dev"
 authors = ["Masaki Hara <ackie.h.gmai@gmail.com>"]
 
 description = "An experimental implementation of library-level by-move references"
