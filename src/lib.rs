@@ -1,11 +1,8 @@
 //! This crate contains an experimental implementation of library-level
 //! by-move references.
 //!
-//! When [#50173][#50173] land in the compiler,
-//! it will enable you to use `self: RefMove<Self>` to pass your trait
+//! It will enable you to use `self: RefMove<Self>` to pass your trait
 //! object by value, even without allocation.
-//!
-//! [#50173]: https://github.com/rust-lang/rust/pull/50173
 //!
 //! See [#48055][#48055] for another approach to allow by-value trait objects.
 //!
@@ -56,7 +53,7 @@
 // To implement CoerceUnsized
 #![feature(unsize, coerce_unsized)]
 // To use self: RefMove<Self>
-#![feature(arbitrary_self_types)]
+#![feature(arbitrary_self_types, dispatch_from_dyn)]
 // To implement FnOnce/FnMut/Fn
 #![feature(unboxed_closures, fn_traits)]
 // To implement ExactSizeIterator::is_empty
@@ -65,13 +62,13 @@
 #![feature(trusted_len)]
 // To implement Read::initializer
 #![cfg_attr(feature = "std", feature(read_initializer))]
-#![cfg_attr(not(feature = "std"), no_std)]
-#[cfg(not(feature = "std"))]
+#![cfg_attr(not(any(feature = "std", test)), no_std)]
+#[cfg(not(any(feature = "std", test)))]
 use core as std;
 
 use std::marker::{PhantomData, Unpin, Unsize};
 use std::mem::{self, ManuallyDrop};
-use std::ops::{CoerceUnsized, Deref, DerefMut};
+use std::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn};
 #[cfg(feature = "std")]
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::ptr::{self, drop_in_place, NonNull};
@@ -189,32 +186,45 @@ where
     'b: 'a,
     T: Unsize<U> + ?Sized,
     U: ?Sized,
-{}
+{
+}
+
+impl<'a, T, U> DispatchFromDyn<RefMove<'a, U>> for RefMove<'a, T>
+where
+    T: Unsize<U> + ?Sized,
+    U: ?Sized,
+{
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // TODO: wait for rust-lang/rust#50173
+    use Anchor;
+    use AnchorExt;
 
-    // use Anchor;
-    // use BorrowInteriorExt;
+    trait Foo {
+        fn foo(self: RefMove<Self>);
+    }
 
-    // trait Foo {
-    //     fn foo(self: RefMove<Self>);
-    // }
+    impl Foo for String {
+        fn foo(self: RefMove<Self>) {
+            println!("{}", self);
+        }
+    }
 
-    // impl Foo for String {
-    //     fn foo(self: RefMove<Self>) {
-    //         println!("{}", self);
-    //     }
-    // }
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_object() {
+        let x: Box<Foo> = Box::new("hoge".to_string());
+        x.anchor_box().borrow_move().foo();
+    }
 
-    // #[test]
-    // fn test_foo() {
-    //     let x: Box<Foo> = Box::new("hoge".to_string());
-    //     x.anchor_box().borrow_move().foo();
-    // }
+    #[test]
+    fn test_object_nostd() {
+        let x = "hoge".to_string();
+        (x.anchor().borrow_move() as RefMove<Foo>).foo();
+    }
 
     #[cfg(feature = "std")]
     #[test]
