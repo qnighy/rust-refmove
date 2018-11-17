@@ -56,7 +56,7 @@
 // To implement CoerceUnsized
 #![feature(unsize, coerce_unsized)]
 // To use self: RefMove<Self>
-#![feature(arbitrary_self_types)]
+#![feature(arbitrary_self_types, dispatch_from_dyn)]
 // To implement FnOnce/FnMut/Fn
 #![feature(unboxed_closures, fn_traits)]
 // To implement ExactSizeIterator::is_empty
@@ -71,7 +71,7 @@ use core as std;
 
 use std::marker::{PhantomData, Unpin, Unsize};
 use std::mem::{self, ManuallyDrop};
-use std::ops::{CoerceUnsized, Deref, DerefMut};
+use std::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn};
 #[cfg(feature = "std")]
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::ptr::{self, drop_in_place, NonNull};
@@ -192,30 +192,42 @@ where
 {
 }
 
+impl<'a, T, U> DispatchFromDyn<RefMove<'a, U>> for RefMove<'a, T>
+where
+    T: Unsize<U> + ?Sized,
+    U: ?Sized,
+{
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // TODO: wait for rust-lang/rust#50173
+    use Anchor;
+    use AnchorExt;
 
-    // use Anchor;
-    // use BorrowInteriorExt;
+    trait Foo {
+        fn foo(self: RefMove<Self>);
+    }
 
-    // trait Foo {
-    //     fn foo(self: RefMove<Self>);
-    // }
+    impl Foo for String {
+        fn foo(self: RefMove<Self>) {
+            println!("{}", self);
+        }
+    }
 
-    // impl Foo for String {
-    //     fn foo(self: RefMove<Self>) {
-    //         println!("{}", self);
-    //     }
-    // }
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_object() {
+        let x: Box<Foo> = Box::new("hoge".to_string());
+        x.anchor_box().borrow_move().foo();
+    }
 
-    // #[test]
-    // fn test_foo() {
-    //     let x: Box<Foo> = Box::new("hoge".to_string());
-    //     x.anchor_box().borrow_move().foo();
-    // }
+    #[test]
+    fn test_object_nostd() {
+        let x = "hoge".to_string();
+        (x.anchor().borrow_move() as RefMove<Foo>).foo();
+    }
 
     #[cfg(feature = "std")]
     #[test]
