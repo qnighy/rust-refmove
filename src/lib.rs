@@ -65,8 +65,8 @@
 #![feature(trusted_len)]
 // To implement Read::initializer
 #![cfg_attr(feature = "std", feature(read_initializer))]
-#![cfg_attr(not(feature = "std"), no_std)]
-#[cfg(not(feature = "std"))]
+#![cfg_attr(not(any(feature = "std", test)), no_std)]
+#[cfg(not(any(feature = "std", test)))]
 use core as std;
 
 use std::marker::{PhantomData, Unpin, Unsize};
