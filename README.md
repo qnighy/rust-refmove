@@ -6,12 +6,8 @@
 This crate contains an experimental implementation of library-level
 by-move references.
 
-When [#50173][#50173] and [#53033][#53033] land in the compiler,
-it will enable you to use `self: RefMove<Self>` to pass your trait
+It will enable you to use `self: RefMove<Self>` to pass your trait
 object by value, even without allocation.
-
-[#50173]: https://github.com/rust-lang/rust/pull/50173
-[#53033]: https://github.com/rust-lang/rust/pull/53033
 
 See [#48055][#48055] for another approach to allow by-value trait objects.
 
